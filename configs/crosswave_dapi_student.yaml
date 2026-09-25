@@ -1,0 +1,242 @@
+# # ============================================================
+# # CrossWave virtual staining
+# # Frozen MAF teacher -> single DAPI-filter AF student
+# # ============================================================
+
+# experiment:
+#   name: crosswave_dapi_student_newTeacher_v3
+#   seed: 42
+
+# # ------------------------------------------------------------
+# # IMPORTANT:
+# # mode remains "maf" intentionally.
+# #
+# # The loader returns paired [C0, C2].
+# # Teacher sees both channels.
+# # Student input is sliced internally to C2 only.
+# # ------------------------------------------------------------
+# data:
+#   mode: maf
+#   split_csv: data/metadata/data_split.csv
+
+#   batch_size: 4
+#   val_batch_size: 16
+#   num_workers: 4
+#   augment: true
+
+#   # Keep the same H&E model-domain convention as the teacher.
+#   invert_y_domain: true
+
+# # ------------------------------------------------------------
+# # Student E-CycleGAN
+# # Same generator depth/capacity as teacher except 1 input band.
+# # ------------------------------------------------------------
+# model:
+#   x_channels: 1
+#   y_channels: 3
+
+#   base_channels: 64
+#   num_res_blocks: 9
+#   padding_type: reflect
+
+# # ------------------------------------------------------------
+# # Original E-CycleGAN student losses
+# # ------------------------------------------------------------
+# loss:
+#   lambda_cyc: 10.0
+#   lambda_feat: 1.0
+#   lambda_sal: 1.0
+
+#   threshold: 170
+#   sharpness: 20.0
+
+#   auxiliary_invert_x: false
+
+# # ------------------------------------------------------------
+# # CrossWave knowledge transfer
+# #
+# # MAF loader order is [C0, C2], therefore index 1 = C2/DAPI.
+# #
+# # Prediction KD:
+# #   L1(student virtual H&E, teacher virtual H&E)
+# #
+# # Feature KD:
+# #   L1(student residual representation,
+# #      teacher residual representation)
+# # ------------------------------------------------------------
+# crosswave:
+#   teacher_checkpoint: outputs/maf_teacher_stable_b_inverted_y_v2/checkpoints/best_fid.pt
+
+#   dapi_channel_index: 1
+
+#   lambda_kd_prediction: 3
+#   lambda_kd_feature: 1.5
+
+# # ------------------------------------------------------------
+# # Optimization
+# #
+# # Reuse the adaptive scheduler that produced the selected teacher.
+# # ------------------------------------------------------------
+# training:
+#   epochs: 100
+
+#   lr: 0.0002
+#   generator_lr: 0.0002
+#   discriminator_lr: 0.00005
+
+#   beta1: 0.5
+#   beta2: 0.999
+
+#   fake_pool_size: 50
+
+#   compute_fid_kid: true
+#   fid_every: 1
+
+#   sub_eval_tile_size: 256
+#   sub_eval_stride: 256
+
+#   metric_batch_size: 16
+#   kid_subsets: 50
+#   kid_subset_size: 1000
+
+#   # Reuse the real H&E Inception cache already created.
+#   reuse_real_metric_cache: true
+#   real_metric_cache: data/cache/sub_eval_real_he_inception_fid_kid.pt
+
+#   # FID-driven adaptive learning rate.
+#   lr_scheduler: reduce_on_plateau
+
+#   plateau_factor_g: 0.5
+#   plateau_factor_d: 0.5
+#   plateau_patience: 4
+#   plateau_threshold: 0.5
+
+#   plateau_min_lr_g: 0.0000125
+#   plateau_min_lr_d: 0.000003125
+
+#   early_stopping_patience: 12
+#   early_stopping_min_delta: 0.0
+
+# checkpoint:
+#   save_every: 1
+#   keep_last: 50
+
+# logging:
+#   print_every: 100
+# ============================================================
+# CrossWave virtual staining
+# Prediction-emphasized KD
+# Frozen MAF teacher -> single DAPI-filter AF student
+# ============================================================
+
+experiment:
+  name: crosswave_dapi_student_pred5_feat1_v3
+  seed: 42
+
+data:
+  mode: maf
+  split_csv: data/metadata/data_split.csv
+
+  batch_size: 4
+  val_batch_size: 16
+  num_workers: 4
+  augment: true
+
+  invert_y_domain: true
+
+
+# ------------------------------------------------------------
+# Student E-CycleGAN
+# ------------------------------------------------------------
+
+model:
+  x_channels: 1
+  y_channels: 3
+
+  base_channels: 64
+  num_res_blocks: 9
+  padding_type: reflect
+
+
+# ------------------------------------------------------------
+# Original E-CycleGAN losses
+# ------------------------------------------------------------
+
+loss:
+  lambda_cyc: 10.0
+  lambda_feat: 1.0
+  lambda_sal: 1.0
+
+  threshold: 170
+  sharpness: 20.0
+
+  auxiliary_invert_x: false
+
+
+# ------------------------------------------------------------
+# CrossWave knowledge transfer
+# ------------------------------------------------------------
+
+crosswave:
+  teacher_checkpoint: outputs/maf_teacher_stable_b_inverted_y_v2/checkpoints/best_fid.pt
+
+  dapi_channel_index: 1
+
+  # Increase prediction-level guidance
+  # Reduce feature-level dominance
+  lambda_kd_prediction: 5.0
+  lambda_kd_feature: 1.0
+
+
+# ------------------------------------------------------------
+# Optimization
+#
+# Keep unchanged so this is a clean KD-weight comparison.
+# ------------------------------------------------------------
+
+training:
+  epochs: 100
+
+  lr: 0.0002
+  generator_lr: 0.0002
+  discriminator_lr: 0.00005
+
+  beta1: 0.5
+  beta2: 0.999
+
+  fake_pool_size: 50
+
+  compute_fid_kid: true
+  fid_every: 1
+
+  sub_eval_tile_size: 256
+  sub_eval_stride: 256
+
+  metric_batch_size: 16
+  kid_subsets: 50
+  kid_subset_size: 1000
+
+  reuse_real_metric_cache: true
+  real_metric_cache: data/cache/sub_eval_real_he_inception_fid_kid.pt
+
+  lr_scheduler: reduce_on_plateau
+
+  plateau_factor_g: 0.5
+  plateau_factor_d: 0.5
+  plateau_patience: 4
+  plateau_threshold: 0.5
+
+  plateau_min_lr_g: 0.0000125
+  plateau_min_lr_d: 0.000003125
+
+  early_stopping_patience: 12
+  early_stopping_min_delta: 0.0
+
+
+checkpoint:
+  save_every: 1
+  keep_last: 50
+
+
+logging:
+  print_every: 100

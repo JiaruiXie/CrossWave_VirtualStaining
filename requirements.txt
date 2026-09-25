@@ -1,0 +1,13 @@
+﻿numpy
+pandas
+Pillow
+PyYAML
+matplotlib
+scipy
+opencv-python
+tifffile
+openslide-python
+torch
+torchvision
+torchmetrics
+torch-fidelity

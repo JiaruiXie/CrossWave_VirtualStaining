@@ -1,0 +1,119 @@
+# ============================================================
+# DAPI/C2 single-band baseline
+#
+# FAIR COMPARISON:
+# Same one-channel input, same E-CycleGAN architecture, same split,
+# same inverted-Y setup, same optimizer, and same adaptive scheduler
+# as the current CrossWave v3 student.
+#
+# Only difference:
+#   CrossWave -> teacher + KD
+#   Baseline  -> no teacher, no KD
+# ============================================================
+
+experiment:
+  name: dapi_baseline_v3
+  seed: 42
+
+# ------------------------------------------------------------
+# Keep mode=maf intentionally.
+#
+# Loader returns [C0, C2].
+# Baseline trainer internally slices C2 only.
+# This guarantees that CrossWave and baseline see the exact same
+# one-channel image representation.
+# ------------------------------------------------------------
+data:
+  mode: maf
+  split_csv: data/metadata/data_split.csv
+
+  batch_size: 4
+  val_batch_size: 16
+  num_workers: 4
+  augment: true
+
+  invert_y_domain: true
+
+# ------------------------------------------------------------
+# Single-channel E-CycleGAN
+# Same model capacity as CrossWave student.
+# ------------------------------------------------------------
+model:
+  x_channels: 1
+  y_channels: 3
+
+  base_channels: 64
+  num_res_blocks: 9
+  padding_type: reflect
+
+# ------------------------------------------------------------
+# Original E-CycleGAN losses only.
+# There are NO CrossWave KD terms in this experiment.
+# ------------------------------------------------------------
+loss:
+  lambda_cyc: 10.0
+  lambda_feat: 1.0
+  lambda_sal: 1.0
+
+  threshold: 170
+  sharpness: 20.0
+
+  auxiliary_invert_x: false
+
+# ------------------------------------------------------------
+# C2 is index 1 inside the loader's [C0, C2] tensor.
+# ------------------------------------------------------------
+baseline:
+  dapi_channel_index: 1
+
+# ------------------------------------------------------------
+# Optimization
+#
+# Use the gentler scheduler selected for the current CrossWave v3
+# comparison so optimization is not a confound.
+# ------------------------------------------------------------
+training:
+  epochs: 100
+
+  lr: 0.0002
+  generator_lr: 0.0002
+  discriminator_lr: 0.00005
+
+  beta1: 0.5
+  beta2: 0.999
+
+  fake_pool_size: 50
+
+  compute_fid_kid: true
+  fid_every: 1
+
+  sub_eval_tile_size: 256
+  sub_eval_stride: 256
+
+  metric_batch_size: 16
+  kid_subsets: 50
+  kid_subset_size: 1000
+
+  reuse_real_metric_cache: true
+  real_metric_cache: data/cache/sub_eval_real_he_inception_fid_kid.pt
+
+  lr_scheduler: reduce_on_plateau
+
+  plateau_factor_g: 0.5
+  plateau_factor_d: 0.5
+
+  plateau_patience: 3
+  plateau_threshold: 0.5
+
+  plateau_min_lr_g: 0.0000125
+  plateau_min_lr_d: 0.00000625
+
+  early_stopping_patience: 12
+  early_stopping_min_delta: 0.0
+
+checkpoint:
+  save_every: 1
+  keep_last: 50
+
+logging:
+  print_every: 100

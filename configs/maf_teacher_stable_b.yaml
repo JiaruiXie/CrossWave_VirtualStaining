@@ -1,0 +1,66 @@
+experiment:
+  name: maf_teacher_stable
+  seed: 42
+
+data:
+  split_csv: data/metadata/data_split.csv
+  mode: maf
+  batch_size: 4
+  num_workers: 4
+  augment: true
+
+model:
+  x_channels: 2
+  y_channels: 3
+  base_channels: 64
+  num_res_blocks: 9
+  padding_type: reflect
+
+training:
+  epochs: 200
+
+  # Experiment B
+  generator_lr: 0.0002
+  discriminator_lr: 0.0001
+
+  # compatibility
+  lr: 0.0002
+
+  beta1: 0.5
+  beta2: 0.999
+
+  constant_lr_epochs: 100
+  decay_epochs: 100
+
+  # CycleGAN replay pool
+  fake_pool_size: 50
+
+  # Sub_eval validation
+  compute_fid_kid: true
+  fid_every: 1
+
+  sub_eval_tile_size: 256
+  sub_eval_stride: 256
+
+  metric_batch_size: 16
+
+  kid_subsets: 50
+  kid_subset_size: 1000
+
+loss:
+  # Paper does not report exact numerical lambda values.
+  lambda_cyc: 10.0
+  lambda_feat: 1.0
+  lambda_sal: 1.0
+
+  auxiliary_invert_x: true
+
+  saliency_threshold: 170
+  saliency_sharpness: 20.0
+
+checkpoint:
+  save_every: 1
+  keep_last: 40
+
+logging:
+  print_every: 100
